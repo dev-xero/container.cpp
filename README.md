@@ -1,4 +1,4 @@
-# `container.cpp`
+# Container.cpp
 
 Linux container from scratch on MacOS silicon.
 
@@ -16,7 +16,28 @@ Install C++ build tools
 
 ```bash
 sudo apk update
-sudo apk add g++ make musl-dev cmak
+sudo apk add g++ make musl-dev cmake
 ```
 
+## Environment
+
+Clone
+
+Make dir writable in Lima!!
+
 ## Experimenting
+
+Compile inside the Linux Virtual Machine
+
+```bash
+g++ -std=gnu++17 container.cpp -o container
+```
+
+Try running something
+
+```bash
+./container run /bin/bash
+$ hostname
+```
+
+You should see 'containerd' printed. This process is effectively running in its own namespace!

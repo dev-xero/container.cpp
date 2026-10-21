@@ -1,11 +1,14 @@
-#include <string>
-#include <sys/wait.h>
-#include <unistd.h>
 #include <cstdlib>
 #include <cerrno>
 #include <cstdio>
+#include <iostream>
+#include <string>
+#include <sys/wait.h>
 #include <sched.h>
 #include <sys/mman.h>
+#include <unistd.h>
+
+constexpr size_t STACK_SIZE = 1024 * 1024;
 
 [[noreturn]] void die(const char* message)
 {
@@ -28,9 +31,7 @@ public:
     // This is fine because that is where this container should be running
     base_ = mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK, -1, 0);
     if (base_ == MAP_FAILED)
-    {
       die("mmap failed");
-    }
 
     // See: https://man7.org/linux/man-pages/man3/sysconf.3.html
     const size_t page = sysconf(_SC_PAGESIZE);
@@ -58,27 +59,52 @@ private:
 class Container
 {
 public:
+  Container(char** argv, std::string hostname = "container") 
+    : argv_(argv), hostname_(std::move(hostname)) {}
+
+  int run()
+  {
+    std::cout << "Running process " << argv_[0] << "\n";
+    Stack stack(STACK_SIZE);
+    pid_t pid = clone(
+      &Container::child_entry,
+      stack.top(),
+      CLONE_NEWUSER | CLONE_NEWUTS | SIGCHLD, 
+      this
+    );
+
+    if (pid == -1)
+      die("clone failed");
+
+    int status;
+    if (waitpid(pid, &status, 0) == -1)
+      die("waitpid failed");
+    
+    // See: https://man7.org/linux/man-pages/man2/wait.2.html
+    return WIFEXITED(status) ? WEXITSTATUS(status) : EXIT_FAILURE;
+  }
   
 private:
-};
-
-int child(void* arg)
-{
-  const char* proc = static_cast<char*>(arg);
-  if (sethostname("container", 9) != 0)
+  static int child_entry(void* arg)
   {
-    perror("sethostname failed");
-    return 1;
+    return static_cast<Container*>(arg) -> child_main();
   }
-  char* args[] = { const_cast<char*>(proc), NULL };
-  execvp(args[0], args);
-  perror("execvp failed");
-  return 1;
-}
-
-void start_process(char** argv)
-{
-}
+  
+  int child_main()
+  {
+    if (sethostname(hostname_.c_str(), hostname_.length()) != 0)
+    {
+      perror("sethostname failed");
+      _exit(1);
+    }
+    execvp(argv_[0], argv_);
+    perror("execvp failed");
+    _exit(1);
+  }
+  
+  char** argv_;
+  std::string hostname_;
+};
 
 int main(int argc, char* argv[])
 {
@@ -88,5 +114,6 @@ int main(int argc, char* argv[])
   if (std::string(argv[1]).compare("run") != 0)
     usage("second parameter must be 'run'");
   
-  return start_process(argv + 2);
+  Container container(&argv[2], "containerd");
+  return container.run();
 }

@@ -7,7 +7,6 @@
 #include <string>
 #include <sys/mman.h>
 #include <sys/wait.h>
-#include <system_error>
 #include <unistd.h>
 
 constexpr size_t STACK_SIZE = 1024 * 1024;

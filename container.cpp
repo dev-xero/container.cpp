@@ -1,11 +1,13 @@
 #include <cerrno>
 #include <cstdio>
 #include <cstdlib>
+#include <fstream>
 #include <iostream>
 #include <sched.h>
 #include <string>
 #include <sys/mman.h>
 #include <sys/wait.h>
+#include <system_error>
 #include <unistd.h>
 
 constexpr size_t STACK_SIZE = 1024 * 1024;
@@ -56,12 +58,21 @@ class Container {
     int run() {
         std::cout << "Running process " << argv_[0] << " with PID " << getpid() << "\n";
         Stack stack(STACK_SIZE);
+
+        if (pipe(sync_pipe_) == -1)
+            die("pipe failed");
+
         // See: http://man7.org/linux/man-pages/man2/clone.2.html
         pid_t pid =
             clone(&Container::child_entry, stack.top(), CLONE_NEWUSER | CLONE_NEWUTS | CLONE_NEWPID | SIGCHLD, this);
 
         if (pid == -1)
             die("clone failed");
+
+        close(sync_pipe_[0]);
+
+        // clone() starts the child immediately
+        // TODO: I need to set the uid & gid here (/proc/<pid>/)
 
         int status;
         if (waitpid(pid, &status, 0) == -1)
@@ -73,6 +84,13 @@ class Container {
 
   private:
     static int child_entry(void *arg) { return static_cast<Container *>(arg)->child_main(); }
+
+    void write_file(const std::string &path, const std::string &value) {
+        std::ofstream file(path);
+        if (!file || !(file << value)) {
+            die("write_file failed");
+        }
+    }
 
     int child_main() {
         if (sethostname(hostname_.c_str(), hostname_.length()) != 0) {
@@ -86,6 +104,7 @@ class Container {
 
     char **argv_;
     std::string hostname_;
+    int sync_pipe_[2] = {-1, -1}; // parent, child
 };
 
 int main(int argc, char *argv[]) {
@@ -95,6 +114,6 @@ int main(int argc, char *argv[]) {
     if (std::string(argv[1]).compare("run") != 0)
         usage("second parameter must be 'run'");
 
-    Container container(&argv[2], "containerd");
+    Container container(&argv[2], "container.cpp");
     return container.run();
 }

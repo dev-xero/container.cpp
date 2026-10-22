@@ -69,10 +69,19 @@ class Container {
         if (pid == -1)
             die("clone failed");
 
-        close(sync_pipe_[0]);
+        close(sync_pipe_[0]); // done with the parent
 
-        // clone() starts the child immediately
-        // TODO: I need to set the uid & gid here (/proc/<pid>/)
+        // Permission errors arise otherwise, setting up simple synchronization mechanism between parent
+        // and child processes here.
+        // See: https://linux.die.net/man/2/setgroups
+        write_file("/proc/" + std::to_string(pid) + "/uid_map", "0 " + std::to_string(getuid()) + " 1\n");
+        write_file("/proc/" + std::to_string(pid) + "/setgroups", "deny\n");
+        write_file("/proc/" + std::to_string(pid) + "/gid_map", "0 " + std::to_string(getgid()) + " 1\n");
+
+        char go = '1';
+        if (write(sync_pipe_[1], &go, 1) != 1)
+            die("pipe write failed (child)");
+        close(sync_pipe_[1]); // likewise with the child
 
         int status;
         if (waitpid(pid, &status, 0) == -1)
@@ -93,6 +102,14 @@ class Container {
     }
 
     int child_main() {
+        close(sync_pipe_[1]);
+        char go;
+        ssize_t n = read(sync_pipe_[0], &go, 1);
+        close(sync_pipe_[0]);
+
+        if (n != 1)
+            die("synchronization failed");
+
         if (sethostname(hostname_.c_str(), hostname_.length()) != 0) {
             perror("sethostname failed");
             _exit(1);

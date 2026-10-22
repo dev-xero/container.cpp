@@ -41,3 +41,7 @@ $ hostname
 ```
 
 You should see 'containerd' printed. This process is effectively running in its own namespace!
+
+## Caveats
+
+No proper error handling kill on failure

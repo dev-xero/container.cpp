@@ -68,11 +68,11 @@ class Container {
         if (pid == -1)
             die("clone failed");
 
-        close(sync_pipe_[0]); // done with the parent
+        close(sync_pipe_[0]);
 
-        // Permission errors arise otherwise, setting up simple synchronization mechanism between parent
-        // and child processes here.
+        // Permission errors arise otherwise
         // See: https://linux.die.net/man/2/setgroups
+        //      https://linux.die.net/man/3/uid
         write_file("/proc/" + std::to_string(pid) + "/uid_map", "0 " + std::to_string(getuid()) + " 1\n");
         write_file("/proc/" + std::to_string(pid) + "/setgroups", "deny\n");
         write_file("/proc/" + std::to_string(pid) + "/gid_map", "0 " + std::to_string(getgid()) + " 1\n");
@@ -80,7 +80,7 @@ class Container {
         char go = '1';
         if (write(sync_pipe_[1], &go, 1) != 1)
             die("pipe write failed (child)");
-        close(sync_pipe_[1]); // likewise with the child
+        close(sync_pipe_[1]);
 
         int status;
         if (waitpid(pid, &status, 0) == -1)

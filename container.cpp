@@ -113,6 +113,7 @@ class Container {
             perror("sethostname failed");
             _exit(1);
         }
+
         execvp(argv_[0], argv_);
         perror("execvp failed");
         _exit(1);
@@ -120,7 +121,7 @@ class Container {
 
     char **argv_;
     std::string hostname_;
-    int sync_pipe_[2] = {-1, -1}; // parent, child
+    int sync_pipe_[2] = {-1, -1}; // read, write
 };
 
 int main(int argc, char *argv[]) {

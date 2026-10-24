@@ -6,6 +6,7 @@
 #include <sched.h>
 #include <string>
 #include <sys/mman.h>
+#include <sys/mount.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -62,8 +63,8 @@ class Container {
             die("pipe failed");
 
         // See: http://man7.org/linux/man-pages/man2/clone.2.html
-        pid_t pid =
-            clone(&Container::child_entry, stack.top(), CLONE_NEWUSER | CLONE_NEWUTS | CLONE_NEWPID | SIGCHLD, this);
+        pid_t pid = clone(&Container::child_entry, stack.top(),
+                          CLONE_NEWUSER | CLONE_NEWUTS | CLONE_NEWPID | CLONE_NEWNS | SIGCHLD, this);
 
         if (pid == -1)
             die("clone failed");
@@ -109,13 +110,36 @@ class Container {
         if (n != 1)
             die("synchronization failed");
 
+        if (chroot("/opt/alpine-rootfs") == -1) {
+            perror("chroot failed");
+            _exit(1);
+        }
+
+        if (chdir("/") == -1) {
+            perror("chdir failed");
+            _exit(1);
+        }
+
+        // See: https://man7.org/linux/man-pages/man2/mount.2.html
+        if (mount("proc", "/proc", "proc", 0, nullptr) == -1) {
+            perror("mount failed");
+            _exit(1);
+        }
+
         if (sethostname(hostname_.c_str(), hostname_.length()) != 0) {
             perror("sethostname failed");
             _exit(1);
         }
 
-        execvp(argv_[0], argv_);
+        char *const args[] = {const_cast<char *>("/bin/sh"), nullptr};
+
+        std::cout << "arg0: " << argv_[0] << "\n";
+        execvp(argv_[0], args);
         perror("execvp failed");
+
+        if (umount("/proc") == -1)
+            perror("unmount failed");
+
         _exit(1);
     }
 
@@ -131,6 +155,6 @@ int main(int argc, char *argv[]) {
     if (std::string(argv[1]).compare("run") != 0)
         usage("second parameter must be 'run'");
 
-    Container container(&argv[2], "container.cpp");
+    Container container(&argv[2], "host-container");
     return container.run();
 }

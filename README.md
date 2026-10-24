@@ -56,3 +56,16 @@ You should see 'containerd' printed. This process is effectively running in its 
 ## Caveats
 
 No proper error handling kill on failure
+
+## References
+
+- https://en.wikipedia.org/wiki/Linux_namespaces
+- https://en.wikipedia.org/wiki/Cgroups
+- https://en.wikipedia.org/wiki/BusyBox
+- https://en.wikipedia.org/wiki/Systemd
+- https://lwn.net/Articles/689856
+- https://man7.org/linux/man-pages/man2/wait.2.html
+- https://linux.die.net/man/2/setgroups
+- https://linux.die.net/man/3/uid
+- http://man7.org/linux/man-pages/man2/clone.2.html
+- https://man7.org/linux/man-pages/man3/sysconf.3.html

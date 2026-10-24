@@ -110,6 +110,21 @@ class Container {
         if (n != 1)
             die("synchronization failed");
 
+        // We don't want the container's mount relationships to propagate to
+        // the VM, just like Liz did.
+        // This recursively makes mount propagation private.
+        if (mount(nullptr, "/", nullptr, MS_REC | MS_PRIVATE, nullptr) == -1) {
+            perror("failed to make mount private");
+            _exit(1);
+        }
+
+        if (sethostname(hostname_.c_str(), hostname_.length()) != 0) {
+            perror("sethostname failed");
+            _exit(1);
+        }
+
+        // Filesystem root directory
+        // TODO: make this passable via flags
         if (chroot("/opt/alpine-rootfs") == -1) {
             perror("chroot failed");
             _exit(1);
@@ -123,11 +138,6 @@ class Container {
         // See: https://man7.org/linux/man-pages/man2/mount.2.html
         if (mount("proc", "/proc", "proc", 0, nullptr) == -1) {
             perror("mount failed");
-            _exit(1);
-        }
-
-        if (sethostname(hostname_.c_str(), hostname_.length()) != 0) {
-            perror("sethostname failed");
             _exit(1);
         }
 

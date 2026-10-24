@@ -22,7 +22,11 @@ This is my attempt at implementing a crude Linux container from scratch in a Vir
 
 A container at the most fundamental level on Linux systems is just another [process](<https://en.wikipedia.org/wiki/Process_(computing)>). A process is an instance of a running program.
 
-Now then, what makes containers different from regular processes? You could say that a container has a much more 'contained' and controlled view of the system's resources. This is typically achieved by what's known as [Namespaces](https://en.wikipedia.org/wiki/Linux_namespaces). Namespaces, aptly named, control what resources a process can 'see'. The second half of the puzzle are [Control Groups](https://en.wikipedia.org/wiki/Cgroups). Where namespaces decided what a process can see, Control Groups (or cgroups) decide how much system resources the said process can use. By controlling what system resources a process can see and use, we create the illusion that allows containers to behave as isolated units on the same host kernel.
+Now then, what makes containers different from regular processes? You could say that a container has a much more 'contained' and controlled view of the system's resources. This is typically achieved by what's known as [Namespaces](https://en.wikipedia.org/wiki/Linux_namespaces). 
+
+Aptly named, they control what resources a process can 'see'. The second half of the puzzle are [Control Groups](https://en.wikipedia.org/wiki/Cgroups). 
+
+Where namespaces decided what a process can see, Control Groups (or cgroups) decide how much system resources the said process can use. By controlling what system resources a process can see and use, we create the illusion that allows containers to behave as isolated units on the same host kernel.
 
 ## Bare Minimum Objectives
 

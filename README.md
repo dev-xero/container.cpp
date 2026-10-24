@@ -39,11 +39,11 @@ The reason we specify a `--fs` or file system flag will become apparent later. T
 
 ## Virtual Machine Setup
 
-**NOTE: You can skip this step if you're running Linux already.**
+> **NOTE: You can skip this step if you're running Linux already.**
 
 From here on out, I assume that you're on an arm64 processor, specifically an Apple Silicon. Changing these steps for x86 shouldn't be difficult.
 
-Alright, I'm going to make another assumption that you have [homebrew](https://brew.sh/) installed as well.
+I'm going to make another assumption that you have [homebrew](https://brew.sh/) installed as well.
 
 ### Install Linux Machines (Lima)
 
@@ -54,13 +54,13 @@ brew install lima
 limactl start
 ```
 
-**NOTE: On first run, Lima will ask you to download Ubuntu**
-
+> **NOTE: On first run, Lima will ask you to download Ubuntu**
+>
 > I've only experimented on Alpine Linux and the following steps will assume you're running an Alpine box.
 
 ### Alpine Linux
 
-Alpine Linux is an extremely lightweight Linux distro commonly used in embedded environments (See [busybox](https://en.wikipedia.org/wiki/BusyBox)). I've chosen this distro because it's simple to use. However, because it's so lightweight we're missing a few tools and binaries, namely some C++ build tools.
+Alpine Linux is an extremely lightweight Linux distro commonly used in embedded environments (see [busybox](https://en.wikipedia.org/wiki/BusyBox)). I've chosen this distro because it's simple to use. However, because it's so lightweight we're missing a few tools and binaries, namely some C++ build tools.
 
 Install C++ build tools
 

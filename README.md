@@ -1,5 +1,16 @@
 # Container.cpp
 
+```
+
+                __       _                               
+ _______  ___  / /____ _(_)__  ___ _______  _______  ___ 
+/ __/ _ \/ _ \/ __/ _ `/ / _ \/ -_) __(_-<_/ __/ _ \/ _ \
+\__/\___/_//_/\__/\_,_/_/_//_/\__/_/ /___(_)__/ .__/ .__/
+                                             /_/  /_/    
+
+
+```
+
 This is my attempt at implementing a crude Linux 'container' from scratch on MacOS (arm64).
 
 ## Table of Contents

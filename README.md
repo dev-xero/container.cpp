@@ -41,9 +41,7 @@ The reason we specify a `--fs` or file system flag will become apparent later. T
 
 > **Note:** You can skip this step if you're running Linux already.
 
-From here on out, I assume that you're on an arm64 processor, specifically an Apple Silicon. Changing these steps for x86 shouldn't be difficult. If you're unsure what cpu architecture your computer is using, run `uname -m`.
-
-I'm going to make another assumption that you have [homebrew](https://brew.sh/) installed as well.
+From here on out, I assume that you're on an arm64 processor, specifically an Apple Silicon. Changing these steps for x86 shouldn't be difficult. If you're unsure what cpu architecture your computer is using, run `uname -m`. I'm going to make another assumption that you have [homebrew](https://brew.sh/) installed as well.
 
 ### Install Linux Machines (Lima)
 
@@ -59,8 +57,6 @@ limactl start
 ### Alpine Linux
 
 Alpine Linux is an extremely lightweight Linux distro commonly used in embedded environments (see [busybox](https://en.wikipedia.org/wiki/BusyBox)). I've chosen this distro because it's simple to use. However, because it's so lightweight we're missing a few tools and binaries, namely some C++ build tools.
-
-Install C++ build tools
 
 ```bash
 sudo apk update

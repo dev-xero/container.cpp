@@ -39,9 +39,9 @@ The reason we specify a `--fs` or file system flag will become apparent later. T
 
 ## Virtual Machine Setup
 
-> **NOTE: You can skip this step if you're running Linux already.**
+> **Note:** You can skip this step if you're running Linux already.
 
-From here on out, I assume that you're on an arm64 processor, specifically an Apple Silicon. Changing these steps for x86 shouldn't be difficult.
+From here on out, I assume that you're on an arm64 processor, specifically an Apple Silicon. Changing these steps for x86 shouldn't be difficult. If you're unsure what cpu architecture your computer is using, run `uname -m`.
 
 I'm going to make another assumption that you have [homebrew](https://brew.sh/) installed as well.
 
@@ -54,9 +54,7 @@ brew install lima
 limactl start
 ```
 
-> **NOTE: On first run, Lima will ask you to download Ubuntu**
->
-> I've only experimented on Alpine Linux and the following steps will assume you're running an Alpine box.
+> **Note:** On first run, Lima will ask you to download Ubuntu. I've only experimented on Alpine Linux and the following steps will assume you're running an Alpine box.
 
 ### Alpine Linux
 

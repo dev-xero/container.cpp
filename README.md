@@ -16,15 +16,22 @@ This is my attempt at implementing a crude Linux container from scratch in a Vir
 - [Bare Minimum Objectives](#bare-minimum-objectives)
 - [Virtual Machine Setup](#virtual-machine-setup)
     - [Install Linux Machines (Lima)](#install-linux-machines-lima)
-    - [Alpine Linux](#alpine-linux)
+    - [Alpine Linux Build Tools](#alpine-linux-build-tools)
+    - [Alpine Linux MiniFS](#alpine-linux-mini-fs)
+- [Experimenting](#experimenting)
+    - [Hostnames](#hostnames)
+    - [ps](#ps)
+    - [top](#top)
+- [Caveats](#caveats)
+- [References](#references)
 
 ## Containers in a Nutshell
 
 A container at the most fundamental level on Linux systems is just another [process](<https://en.wikipedia.org/wiki/Process_(computing)>). A process is an instance of a running program.
 
-Now then, what makes containers different from regular processes? You could say that a container has a much more 'contained' and controlled view of the system's resources. This is typically achieved by what's known as [Namespaces](https://en.wikipedia.org/wiki/Linux_namespaces). 
+Now then, what makes containers different from regular processes? You could say that a container has a much more 'contained' and controlled view of the system's resources. This is typically achieved by what's known as [Namespaces](https://en.wikipedia.org/wiki/Linux_namespaces).
 
-Aptly named, they control what resources a process can 'see'. The second half of the puzzle are [Control Groups](https://en.wikipedia.org/wiki/Cgroups). 
+Aptly named, they control what resources a process can 'see'. The second half of the puzzle are [Control Groups](https://en.wikipedia.org/wiki/Cgroups).
 
 Where namespaces decided what a process can see, Control Groups (or cgroups) decide how much system resources the said process can use. By controlling what system resources a process can see and use, we create the illusion that allows containers to behave as isolated units on the same host kernel.
 
@@ -56,7 +63,7 @@ limactl start
 
 > **Note:** On first run, Lima will ask you to download Ubuntu. I've only experimented on Alpine Linux and the following steps will assume you're running an Alpine box.
 
-### Alpine Linux
+### Alpine Linux Build Tools
 
 Alpine Linux is an extremely lightweight Linux distro commonly used in embedded environments (see [busybox](https://en.wikipedia.org/wiki/BusyBox)). I've chosen this distro because it's simple to use. However, because it's so lightweight we're missing a few tools and binaries, namely some C++ build tools.
 
@@ -65,15 +72,9 @@ sudo apk update
 sudo apk add g++ procps make musl-dev cmake
 ```
 
-## Environment Setup
-
-Clone
-
-Make dir writable in Lima!!
-
 ### Alpine Linux MiniFS
 
-I've downloaded the alpine mini root filesystem build for my particular processor architecture (aarch64). If you're not sure of yours run `uname -m` in the lima shell.
+A [file system](https://en.wikipedia.org/wiki/File_system) controls file organization and access. You can think of this as a very rudimentary 'docker image'. Of course I'm simplifying, but this is where our container's root will be. The reason for this is to further isolate the container from the host. All the container's ever going to know is that these are the files available to it, nothing else.
 
 ```bash
 limactl shell default
@@ -84,24 +85,44 @@ sudo tar -xzf alpine-minirootfs-3.24.0-aarch64.tar.gz -C /opt/alpine-rootfs
 
 ## Experimenting
 
-Compile inside the Linux Virtual Machine
+Compile and run the program inside the Linux Virtual Machine.
 
 ```bash
 g++ -std=gnu++17 container.cpp -o container
+./container run /bin/sh --fs=/opt/alpine-rootfs --mem=10 --cpu=1
 ```
 
-Try running something
+> Or use the 'compile.sh' script after you've given it execution permissions.
+
+### Hostnames
+
+On your Lima box, running `hostname` should give you 'lima-default'
 
 ```bash
-./container run /bin/bash
-$ hostname
+# lima
+hostname
+> lima-default
 ```
 
-You should see 'containerd' printed. This process is effectively running in its own namespace!
+Inside the container you should get 'host-container'
+
+```bash
+#container
+hostname
+> host-container
+```
+
+### ps
+
+ps.
+
+## top
+
+top
 
 ## Caveats
 
-No proper error handling kill on failure
+1. No proper error handling kill on failure
 
 ## References
 

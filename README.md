@@ -59,6 +59,7 @@ No proper error handling kill on failure
 
 ## References
 
+- https://youtu.be/8fi7uSYlOdc
 - https://en.wikipedia.org/wiki/Linux_namespaces
 - https://en.wikipedia.org/wiki/Cgroups
 - https://en.wikipedia.org/wiki/BusyBox

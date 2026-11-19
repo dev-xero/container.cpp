@@ -202,16 +202,13 @@ RunArguments parseArguments(int argc, char *argv[]) {
 
 
 int main(int argc, char *argv[]) {
-    if (argc < 3)
-        usage("invalid number of arguments");
-
     struct RunArguments args = parseArguments(argc, argv);
 
     if (args.fileSystemRoot == nullptr)
         usage("filesystem root flag must be specified");
 
     if (access(args.fileSystemRoot, F_OK) != 0)
-        usage("filesystem root does not exist");
+        usage("filesystem root not specified or does not exist");
 
     if (args.subcommand == nullptr)
         usage("'run' command must be specified");

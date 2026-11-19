@@ -1,6 +1,8 @@
+#include <algorithm>
 #include <cerrno>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <fstream>
 #include <iostream>
 #include <sched.h>
@@ -18,9 +20,18 @@ constexpr size_t STACK_SIZE = 1024 * 1024;
 }
 
 [[noreturn]] void usage(const char *message) {
-    fprintf(stderr, "%s\nusage: ./container run <cmd> [args...]\n", message);
+    fprintf(stderr, "%s\nusage: ./container -fs <filesystem-root> [flags...] run <cmd> [args...]\n", message);
+    fprintf(stderr, "\nflags:\n\t-mem, amount of memory in megabytes, default is 4\n\t-cpu, number of cpu cores allowed, default is 1\n\n");
+
     exit(EXIT_FAILURE);
 }
+
+struct RunArguments {
+    char *fileSystemRoot;
+    char *subcommand;
+    int memInBytes; 
+    int cpuCores;
+};
 
 class Stack {
   public:
@@ -111,8 +122,7 @@ class Container {
             die("synchronization failed");
 
         // We don't want the container's mount relationships to propagate to
-        // the VM, just like Liz did.
-        // This recursively makes mount propagation private.
+        // the VM. This recursively makes mount propagation private.
         if (mount(nullptr, "/", nullptr, MS_REC | MS_PRIVATE, nullptr) == -1) {
             perror("failed to make mount private");
             _exit(1);
@@ -123,7 +133,6 @@ class Container {
             _exit(1);
         }
 
-        // Filesystem root directory
         // TODO: make this passable via flags
         if (chroot("/opt/alpine-rootfs") == -1) {
             perror("chroot failed");
@@ -141,7 +150,7 @@ class Container {
             _exit(1);
         }
 
-        char *const args[] = {const_cast<char *>("/bin/sh"), nullptr};
+        char *const args[] = {const_cast<char *>(argv_[0]), nullptr};
 
         std::cout << "arg0: " << argv_[0] << "\n";
         execvp(argv_[0], args);
@@ -155,16 +164,65 @@ class Container {
 
     char **argv_;
     std::string hostname_;
-    int sync_pipe_[2] = {-1, -1}; // read, write
+    int sync_pipe_[2] = {-1, -1}; 
 };
+
+RunArguments parseArguments(int argc, char *argv[]) {
+    char *fs, *subcommand = nullptr;
+    int mem = 0, cpu = 0;
+    for (int i = 1; i < argc; i++) {
+        if (i + 1 < argc) {
+            if (strcmp(argv[i], "-fs") == 0) {
+                fs = argv[i + 1];
+                i++;
+            }
+            if (strcmp(argv[i], "-mem") == 0) {
+                mem = atoi(argv[i + 1]) * 1024 * 1024;
+                i++;
+            }
+            if (strcmp(argv[i], "-cpu") == 0) {
+                cpu = atoi(argv[i + 1]);
+                i++;
+            }
+            if (strcmp(argv[i], "run") == 0) {
+                subcommand = argv[i + 1];
+                i++;
+            }
+        }
+    }
+    struct RunArguments args {
+        .fileSystemRoot = fs,
+        .subcommand = subcommand,
+        .memInBytes = mem == 0 ? 4 * 1024 * 1024 : mem,
+        // TODO: this will pose a problem later, fractional cpus
+        .cpuCores = cpu == 0 ? 1 : cpu
+    };
+    return args;
+}
+
 
 int main(int argc, char *argv[]) {
     if (argc < 3)
         usage("invalid number of arguments");
 
-    if (std::string(argv[1]).compare("run") != 0)
-        usage("second parameter must be 'run'");
+    struct RunArguments args = parseArguments(argc, argv);
 
-    Container container(&argv[2], "host-container");
-    return container.run();
+    if (args.fileSystemRoot == nullptr)
+        usage("filesystem root flag must be specified");
+
+    if (access(args.fileSystemRoot, F_OK) != 0)
+        usage("filesystem root does not exist");
+
+    if (args.subcommand == nullptr)
+        usage("'run' command must be specified");
+
+    std::clog << "\n\nDEBUG:\n";
+    std::clog << "File system root: " << args.fileSystemRoot << "\n";
+    std::clog << "Memory in bytes: " << args.memInBytes << "\n";
+    std::clog << "CPU cores: " << args.cpuCores << "\n";
+    std::clog << "Subcommand: " << args.subcommand << "\n\n";
+
+    // Container container(&argv[2], "host-container");
+    // return container.run();
+    return 0;
 }

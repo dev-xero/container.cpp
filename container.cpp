@@ -1,4 +1,3 @@
-#include <algorithm>
 #include <cerrno>
 #include <cstdio>
 #include <cstdlib>
@@ -19,9 +18,15 @@ constexpr size_t STACK_SIZE = 1024 * 1024;
     exit(EXIT_FAILURE);
 }
 
+[[noreturn]] void kill_child(const char *message) {
+    perror(message);
+    _exit(EXIT_FAILURE);
+}
+
 [[noreturn]] void usage(const char *message) {
     fprintf(stderr, "%s\nusage: ./container -fs <filesystem-root> [flags...] run <cmd> [args...]\n", message);
-    fprintf(stderr, "\nflags:\n\t-mem, amount of memory in megabytes, default is 4\n\t-cpu, number of cpu cores allowed, default is 1\n\n");
+    fprintf(stderr, "\nflags:\n\t-mem, amount of memory in megabytes, default is 4\n\t-cpu, number of cpu cores "
+                    "allowed, default is 1\n\n");
 
     exit(EXIT_FAILURE);
 }
@@ -29,7 +34,8 @@ constexpr size_t STACK_SIZE = 1024 * 1024;
 struct RunArguments {
     char *fileSystemRoot;
     char *subcommand;
-    int memInBytes; 
+    int subArgsOffset;
+    int memInBytes;
     int cpuCores;
 };
 
@@ -64,10 +70,15 @@ class Stack {
 
 class Container {
   public:
-    Container(char **argv, std::string hostname = "container") : argv_(argv), hostname_(std::move(hostname)) {}
+    Container(char **argv, const char *filesysroot, const char *subcommand, const int mem, const int cpu,
+              const char *hostname = "container")
+        : argv_(argv), filesysroot_(filesysroot), subcommand_(subcommand), mem_(mem), cpu_(cpu),
+          hostname_(std::move(hostname)) {}
 
     int run() {
-        std::cout << "Running process " << argv_[0] << " with PID " << getpid() << "\n";
+        std::clog << "\nSTARTING CONTAINER:\n";
+        std::clog << "Running process " << subcommand_ << " with PID " << getpid() << "\n";
+
         Stack stack(STACK_SIZE);
 
         if (pipe(sync_pipe_) == -1)
@@ -92,6 +103,7 @@ class Container {
         char go = '1';
         if (write(sync_pipe_[1], &go, 1) != 1)
             die("pipe write failed (child)");
+
         close(sync_pipe_[1]);
 
         int status;
@@ -119,41 +131,27 @@ class Container {
         close(sync_pipe_[0]);
 
         if (n != 1)
-            die("synchronization failed");
+            kill_child("synchronization failed");
 
         // We don't want the container's mount relationships to propagate to
         // the VM. This recursively makes mount propagation private.
-        if (mount(nullptr, "/", nullptr, MS_REC | MS_PRIVATE, nullptr) == -1) {
-            perror("failed to make mount private");
-            _exit(1);
-        }
+        if (mount(nullptr, "/", nullptr, MS_REC | MS_PRIVATE, nullptr) == -1)
+            kill_child("failed to make mount private");
 
-        if (sethostname(hostname_.c_str(), hostname_.length()) != 0) {
-            perror("sethostname failed");
-            _exit(1);
-        }
+        if (sethostname(hostname_, std::strlen(hostname_)) != 0)
+            kill_child("sethostname failed");
 
-        // TODO: make this passable via flags
-        if (chroot("/opt/alpine-rootfs") == -1) {
-            perror("chroot failed");
-            _exit(1);
-        }
+        if (chroot(filesysroot_) == -1)
+            kill_child("chroot failed");
 
-        if (chdir("/") == -1) {
-            perror("chdir failed");
-            _exit(1);
-        }
+        if (chdir("/") == -1)
+            kill_child("chdir failed");
 
-        // See: https://man7.org/linux/man-pages/man2/mount.2.html
-        if (mount("proc", "/proc", "proc", 0, nullptr) == -1) {
-            perror("mount failed");
-            _exit(1);
-        }
+        if (mount("proc", "/proc", "proc", 0, nullptr) == -1)
+            kill_child("mount failed");
 
-        char *const args[] = {const_cast<char *>(argv_[0]), nullptr};
-
-        std::cout << "arg0: " << argv_[0] << "\n";
-        execvp(argv_[0], args);
+        char *const args[] = {const_cast<char *>(subcommand_), const_cast<char *>(argv_[0]), nullptr};
+        execvp(subcommand_, args);
         perror("execvp failed");
 
         if (umount("/proc") == -1)
@@ -163,13 +161,17 @@ class Container {
     }
 
     char **argv_;
-    std::string hostname_;
-    int sync_pipe_[2] = {-1, -1}; 
+    const char *filesysroot_;
+    const char *hostname_;
+    const char *subcommand_;
+    const int mem_;
+    const int cpu_;
+    int sync_pipe_[2] = {-1, -1};
 };
 
 RunArguments parseArguments(int argc, char *argv[]) {
     char *fs, *subcommand = nullptr;
-    int mem = 0, cpu = 0;
+    int subArgsOffset = 0, mem = 0, cpu = 0;
     for (int i = 1; i < argc; i++) {
         if (i + 1 < argc) {
             if (strcmp(argv[i], "-fs") == 0) {
@@ -186,20 +188,19 @@ RunArguments parseArguments(int argc, char *argv[]) {
             }
             if (strcmp(argv[i], "run") == 0) {
                 subcommand = argv[i + 1];
+                subArgsOffset = i + 2;
                 i++;
             }
         }
     }
-    struct RunArguments args {
-        .fileSystemRoot = fs,
-        .subcommand = subcommand,
-        .memInBytes = mem == 0 ? 4 * 1024 * 1024 : mem,
-        // TODO: this will pose a problem later, fractional cpus
-        .cpuCores = cpu == 0 ? 1 : cpu
-    };
+    struct RunArguments args{.fileSystemRoot = fs,
+                             .subcommand = subcommand,
+                             .subArgsOffset = subArgsOffset,
+                             .memInBytes = mem == 0 ? 4 * 1024 * 1024 : mem,
+                             // TODO: this will pose a problem later, fractional cpus
+                             .cpuCores = cpu == 0 ? 1 : cpu};
     return args;
 }
-
 
 int main(int argc, char *argv[]) {
     struct RunArguments args = parseArguments(argc, argv);
@@ -217,9 +218,10 @@ int main(int argc, char *argv[]) {
     std::clog << "File system root: " << args.fileSystemRoot << "\n";
     std::clog << "Memory in bytes: " << args.memInBytes << "\n";
     std::clog << "CPU cores: " << args.cpuCores << "\n";
-    std::clog << "Subcommand: " << args.subcommand << "\n\n";
+    std::clog << "Subcommand: " << args.subcommand << "\n";
+    std::clog << "Subcommand args offset: " << args.subArgsOffset << "\n\n";
 
-    // Container container(&argv[2], "host-container");
-    // return container.run();
-    return 0;
+    Container container(&argv[args.subArgsOffset], args.fileSystemRoot, args.subcommand, args.memInBytes,
+                        args.memInBytes, "host-container");
+    return container.run();
 }

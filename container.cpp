@@ -222,6 +222,6 @@ int main(int argc, char *argv[]) {
     std::clog << "Subcommand args offset: " << args.subArgsOffset << "\n\n";
 
     Container container(&argv[args.subArgsOffset], args.fileSystemRoot, args.subcommand, args.memInBytes,
-                        args.memInBytes, "host-container");
+                        args.cpuCores, "host-container");
     return container.run();
 }

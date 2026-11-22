@@ -8,7 +8,7 @@
                                          /_/  /_/
 ```
 
-This is my attempt at implementing a crude Linux container from scratch in a Virtual Machine on MacOS/arm64.
+This is my attempt at implementing a simple Linux container runtime from scratch in a Virtual Machine on MacOS/arm64.
 
 ## Table of Contents
 
@@ -39,12 +39,12 @@ Where namespaces decided what a process can see, Control Groups (or cgroups) dec
 
 To make it easy to stay on track. I'm going to define the bare minimum the program must accomplish in order for us to consider its process a container.
 
-1. Spawn a process given a command of the form `./container run <cmd> --fs=<fs-path>`
+1. Spawn a process given a command of the form `./container -fs <filesystem-root> -mem 16 -cpu 4 run <cmd> <args>`
 2. Ensure that this process has its own namespace (pid, user, mount)
 3. Ensure that the root mount point is isolated from the parent process
 4. Enforce memory and CPU limits using cgroups
 
-The reason we specify a `--fs` or file system flag will become apparent later. The same goes for why we need mount point isolation.
+The reason we specify a `-fs` or file system flag will become apparent later. The same goes for why we need mount point isolation.
 
 ## Virtual Machine Setup
 
@@ -89,7 +89,7 @@ Compile and run the program inside the Linux Virtual Machine.
 
 ```bash
 g++ -std=gnu++17 container.cpp -o container
-./container run /bin/sh --fs=/opt/alpine-rootfs --mem=10 --cpu=1
+./container -fs /opt/alpine-rootfs run /bin/sh
 ```
 
 > Or use the 'compile.sh' script after you've given it execution permissions.
@@ -114,15 +114,20 @@ hostname
 
 ### ps
 
-ps.
+Here is the result of running `ps` on the virtual box then container.
+
+![ps](./assets/ps.gif)
 
 ## top
 
-top
+Similarly, running `top` at the virtual box and then container level.
+
+![top](./assets/top.gif)
 
 ## Caveats
 
-1. No proper error handling kill on failure
+1. No proper error handling, killing on failure.
+2. Messy argument parsing, see cpu flag code.
 
 ## References
 
